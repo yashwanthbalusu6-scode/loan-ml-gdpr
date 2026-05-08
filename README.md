@@ -41,6 +41,15 @@ BACKEND_URL=http://localhost:8000 streamlit run dashboard.py
 
 The default backend URL the frontend looks for is `http://localhost:8000`. SQLite at `loan_ml.db` is used unless `DATABASE_URL` is set.
 
+## Run with docker-compose (Postgres included)
+
+```bash
+docker-compose up --build
+# backend  → http://localhost:8000
+# frontend → http://localhost:8501
+# postgres → localhost:5432  (loan_ml/loan_ml/loan_ml)
+```
+
 ## API examples
 
 ```bash
@@ -90,6 +99,9 @@ loan-ml-gdpr/
 ├── train_model.py            # Standalone training script
 ├── requirements.txt          # Frontend deps
 ├── requirements-backend.txt  # Backend deps
+├── Dockerfile                # Backend image
+├── Dockerfile.frontend       # Frontend image
+├── docker-compose.yml        # Local dev with Postgres
 └── .gitignore
 ```
 
