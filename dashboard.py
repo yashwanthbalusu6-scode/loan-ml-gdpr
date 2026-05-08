@@ -1,5 +1,6 @@
 """Streamlit frontend for the loan-approval system."""
 import os
+from datetime import datetime
 
 import pandas as pd
 import requests
@@ -51,8 +52,8 @@ with st.sidebar:
         st.error(f"API unreachable: {e}")
 
 
-tab_predict, tab_explain, tab_gdpr = st.tabs(
-    ["🔮 Predict", "📊 Explain", "🛡️ GDPR Compliance"]
+tab_predict, tab_explain, tab_gdpr, tab_metrics = st.tabs(
+    ["🔮 Predict", "📊 Explain", "🛡️ GDPR Compliance", "📈 Model Metrics"]
 )
 
 
@@ -152,3 +153,46 @@ with tab_gdpr:
                 )
             except Exception as e:
                 st.error(str(e))
+
+    st.divider()
+    st.subheader("Compliance report")
+    if st.button("Generate report"):
+        try:
+            metrics = api_get("/model-metrics")
+        except Exception as e:
+            st.error(str(e))
+        else:
+            counts = metrics["audit_counts"]
+            report = (
+                "GDPR Compliance Report\n"
+                f"Generated: {datetime.utcnow().isoformat()}Z\n\n"
+                f"Predictions logged: {counts['predictions']}\n"
+                f"Audit log entries:  {counts['audit_log']}\n"
+                f"Deletions fulfilled: {counts['deletions']}\n\n"
+                f"Demographic parity diff: {metrics['fairness']['demographic_parity_diff']:.3f}\n"
+                f"Passes 4/5ths rule:      {metrics['fairness']['passes_4_5ths_rule']}\n\n"
+                f"Model accuracy: {metrics['accuracy']:.3f}\n"
+                f"Drift score:    {metrics['drift']['credit_score_drift']:.3f}\n"
+            )
+            st.code(report)
+            st.download_button(
+                "⬇️ Download report",
+                report,
+                file_name=f"compliance_report_{datetime.utcnow().date()}.txt",
+            )
+
+
+with tab_metrics:
+    st.subheader("Model performance & drift")
+    if st.button("Compute metrics"):
+        try:
+            m = api_get("/model-metrics")
+        except Exception as e:
+            st.error(str(e))
+        else:
+            cols = st.columns(4)
+            cols[0].metric("Accuracy", f"{m['accuracy']:.3f}")
+            cols[1].metric("Approval <50", f"{m['fairness']['approval_rate_under_50']:.3f}")
+            cols[2].metric("Approval 50+", f"{m['fairness']['approval_rate_50_plus']:.3f}")
+            cols[3].metric("Drift score", f"{m['drift']['credit_score_drift']:.3f}")
+            st.json(m)

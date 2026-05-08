@@ -8,10 +8,11 @@ from typing import List, Literal, Optional
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from audit_logger import (
     AuditLog,
+    Deletion,
     Prediction,
     SessionLocal,
     decrypt_payload,
@@ -63,7 +64,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Loan ML + GDPR API",
     description="Bank loan approval with SHAP explainability and GDPR audit logging.",
-    version="0.5.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -234,3 +235,47 @@ def audit_log_list(
         }
         for r in rows
     ]
+
+
+@app.get("/model-metrics")
+def model_metrics(sess=Depends(get_session)):
+    if "model" not in APP_STATE:
+        raise HTTPException(503, "Model not ready")
+    df = generate_synthetic_loan_data(n=200, seed=99, approval_rate=0.7)
+    X = df[FEATURE_NAMES]
+    y_true = df["approved"].values
+    y_pred = APP_STATE["model"].predict(X)
+    accuracy = float((y_pred == y_true).mean())
+
+    young = df[df["age"] < 50]
+    older = df[df["age"] >= 50]
+    rate_y = float((APP_STATE["model"].predict(young[FEATURE_NAMES]) == 1).mean()) if len(young) else 0.0
+    rate_o = float((APP_STATE["model"].predict(older[FEATURE_NAMES]) == 1).mean()) if len(older) else 0.0
+    parity_diff = abs(rate_y - rate_o)
+
+    drift_score = float(
+        abs(APP_STATE["X_bg"]["credit_score"].mean() - X["credit_score"].mean())
+    ) / 100.0
+
+    n_pred = sess.scalar(select(func.count(Prediction.id)))
+    n_audit = sess.scalar(select(func.count(AuditLog.id)))
+    n_deletions = sess.scalar(select(func.count(Deletion.id)))
+
+    return {
+        "accuracy": accuracy,
+        "fairness": {
+            "approval_rate_under_50": rate_y,
+            "approval_rate_50_plus": rate_o,
+            "demographic_parity_diff": parity_diff,
+            "passes_4_5ths_rule": parity_diff < 0.2,
+        },
+        "drift": {
+            "credit_score_drift": drift_score,
+            "needs_retraining": drift_score > 0.5,
+        },
+        "audit_counts": {
+            "predictions": int(n_pred or 0),
+            "audit_log": int(n_audit or 0),
+            "deletions": int(n_deletions or 0),
+        },
+    }
