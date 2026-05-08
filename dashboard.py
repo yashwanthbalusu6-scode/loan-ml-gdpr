@@ -7,7 +7,8 @@ import requests
 import streamlit as st
 
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
+_DEFAULT_BACKEND = "https://yashjanthb-loan-ml-api.hf.space"
+BACKEND_URL = os.getenv("BACKEND_URL", _DEFAULT_BACKEND).rstrip("/")
 
 st.set_page_config(page_title="Loan ML + GDPR", page_icon="🏦", layout="wide")
 
