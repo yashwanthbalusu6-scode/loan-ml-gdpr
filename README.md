@@ -2,7 +2,9 @@
 
 Production-grade bank-loan-approval ML system with **explainable** decisions (SHAP), a **GDPR-compliant** audit trail, and **right-to-be-forgotten** data deletion.
 
-> **Demo URLs**: _added after deployment_
+> **Live demo**
+> - Dashboard: <https://huggingface.co/spaces/yashjanthb/loan-ml-dashboard> · direct: <https://yashjanthb-loan-ml-dashboard.hf.space>
+> - Backend API: <https://huggingface.co/spaces/yashjanthb/loan-ml-api> · OpenAPI: <https://yashjanthb-loan-ml-api.hf.space/docs>
 
 ## What it does
 
